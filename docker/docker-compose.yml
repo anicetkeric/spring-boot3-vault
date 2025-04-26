@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # PostgreSQL container for Vault storage backend
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: vaultuser
+      POSTGRES_PASSWORD: vaultpass
+      POSTGRES_DB: vault
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5435:5432"
+    networks:
+      - vault-network
+    restart: unless-stopped
+
+  # Vault server container
+  vault:
+    image: hashicorp/vault:1.19
+    container_name: vault
+    environment:
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_API_ADDR: "http://0.0.0.0:8201"
+      #VAULT_CACERT: "/vault/certs/cert.pem"  # For CLI trust
+    volumes:
+      - ./config:/vault/config # Stores Vault's configuration files.
+      - ./vault-data:/vault/data # Stores Vault's data.
+      #- ./certs:/vault/certs  # Mount certs directory
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK #ensures that the Vault container can lock memory, preventing sensitive in-memory data from being swapped out to disk.
+    command:
+      - "server"      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8200/v1/sys/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5  
+    depends_on:
+      - postgres
+    networks:
+      - vault-network
+    restart: unless-stopped
+
+
+volumes:
+  postgres_data:
+  vault-data:
+
+networks:
+  vault-network:
+    driver: bridge
