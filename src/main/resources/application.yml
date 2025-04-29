@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: spring-boot3-vault
+  cloud:
+    vault:
+      # Vault Server Connection
+      uri: http://127.0.0.1:8200	# Vault server address
+      scheme: http			# HTTP or HTTPS	
+      authentication: TOKEN  		# Auth method (TOKEN, APPID, AWS, etc.)
+      token: ${TOKEN}     		# Root or app-specific token (Use environment variables)
+
+      # Secrets Configuration
+      kv:
+        enabled: true			# Enable KV secrets engine
+        backend: dev-labs	        # Path where secrets are stored
+        application-name: db		# Context name for secrets
+  config:
+      import: vault://			# Mounts Vault as PropertySource using all enabled secret backends (key-value enabled by default)
+
+application:
+  env:
+    db-host: ${host}
+    db-name: ${name}
+    db-password: ${password}
